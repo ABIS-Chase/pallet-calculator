@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pallet Loading Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+            color: #334155;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* Align to top for better content flow */
+            min-height: 100vh;
+            padding: 2rem;
+            box-sizing: border-box;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 1.5rem; /* More rounded corners */
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            padding: 2.5rem;
+            max-width: 1200px; /* Increased max-width */
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr; /* Default to single column */
+            gap: 2.5rem;
+        }
+        @media (min-width: 1024px) { /* On large screens, two columns */
+            .container {
+                grid-template-columns: 1fr 1.5fr; /* Input on left, canvas on right */
+            }
+        }
+        .input-section, .results-section {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #475569;
+        }
+        input[type="number"] {
+            padding: 0.75rem 1rem;
+            border: 1px solid #cbd5e1;
+            border-radius: 0.75rem; /* Rounded input fields */
+            font-size: 1rem;
+            color: #334155;
+            transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+        button {
+            background-color: #3b82f6;
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 700;
+            font-size: 1.125rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+            border: none;
+            box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
+        }
+        button:hover {
+            background-color: #2563eb;
+            transform: translateY(-2px);
+        }
+        button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 5px rgba(59, 130, 246, 0.4);
+        }
+        .results-box {
+            background-color: #f8fafc;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            border: 1px solid #e2e8f0;
+        }
+        .results-box p {
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+        .results-box p strong {
+            color: #1e293b;
+        }
+        canvas {
+            border: 2px solid #cbd5e1;
+            border-radius: 1rem;
+            background-color: #f0f9ff; /* Light blue background for canvas */
+            width: 100%;
+            height: auto; /* Maintain aspect ratio */
+            max-height: 600px; /* Max height for canvas */
+            display: block; /* Remove extra space below canvas */
+        }
+        h2 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+        .error-message {
+            color: #ef4444;
+            font-weight: 600;
+            margin-top: 1rem;
+            text-align: center;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="input-section">
+            <h2>Pallet and Item Dimensions (cm)</h2>
+            <div class="input-group">
+                <label for="palletLength">Pallet Length:</label>
+                <input type="number" id="palletLength" value="110" min="1" step="0.1">
+            </div>
+            <div class="input-group">
+                <label for="palletWidth">Pallet Width:</label>
+                <input type="number" id="palletWidth" value="110" min="1" step="0.1">
+            </div>
+            <div class="input-group">
+                <label for="palletHeight">Pallet Height (base):</label>
+                <input type="number" id="palletHeight" value="15" min="0" step="0.1">
+            </div>
+            <div class="input-group">
+                <label for="itemLength">Item Length:</label>
+                <input type="number" id="itemLength" value="43.5" min="0.1" step="0.1">
+            </div>
+            <div class="input-group">
+                <label for="itemWidth">Item Width:</label>
+                <input type="number" id="itemWidth" value="26.5" min="0.1" step="0.1">
+            </div>
+            <div class="input-group">
+                <label for="itemHeight">Item Height:</label>
+                <input type="number" id="itemHeight" value="27" min="0.1" step="0.1">
+            </div>
+            <div class="input-group">
+                <label for="maxPalletHeight">Max Pallet Load Height:</label>
+                <input type="number" id="maxPalletHeight" value="150" min="1" step="0.1">
+            </div>
+            <button id="calculateBtn">Calculate Pallet Load</button>
+            <div id="errorMessage" class="error-message hidden"></div>
+        </div>
+
+        <div class="results-section">
+            <h2>Calculation Results</h2>
+            <div id="resultsDisplay" class="results-box">
+                <p><strong>Total Items:</strong> <span id="totalItems">0</span></p>
+                <p><strong>Optimal Layer Pattern:</strong> <span id="optimalPattern">N/A</span></p>
+                <p><strong>Loaded Pallet Dimensions:</strong> <span id="palletDimensions">N/A</span></p>
+                <p><strong>Loaded Pallet CBM:</strong> <span id="palletCBM">N/A</span></p>
+            </div>
+
+            <h2 class="mt-4">Pallet Layer Layout</h2>
+            <canvas id="palletCanvas"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // Get DOM elements
+        const palletLengthInput = document.getElementById('palletLength');
+        const palletWidthInput = document.getElementById('palletWidth');
+        const palletHeightInput = document.getElementById('palletHeight');
+        const itemLengthInput = document.getElementById('itemLength');
+        const itemWidthInput = document.getElementById('itemWidth');
+        const itemHeightInput = document.getElementById('itemHeight');
+        const maxPalletHeightInput = document.getElementById('maxPalletHeight');
+        const calculateBtn = document.getElementById('calculateBtn');
+        const totalItemsSpan = document.getElementById('totalItems');
+        const optimalPatternSpan = document.getElementById('optimalPattern');
+        const palletDimensionsSpan = document.getElementById('palletDimensions');
+        const palletCBMSpan = document.getElementById('palletCBM');
+        const palletCanvas = document.getElementById('palletCanvas');
+        const errorMessageDiv = document.getElementById('errorMessage');
+        const ctx = palletCanvas.getContext('2d');
+
+        // Function to show error message
+        function showErrorMessage(message) {
+            errorMessageDiv.textContent = message;
+            errorMessageDiv.classList.remove('hidden');
+        }
+
+        // Function to hide error message
+        function hideErrorMessage() {
+            errorMessageDiv.classList.add('hidden');
+            errorMessageDiv.textContent = '';
+        }
+
+        /**
+         * Calculates the number of items that can fit on a pallet, considering various item rotations
+         * within a single layer for optimal placement, and also provides the pallet dimensions and CBM.
+         * This version includes more advanced packing heuristics from the original Python script.
+         * @param {number} pallet_length
+         * @param {number} pallet_width
+         * @param {number} pallet_height
+         * @param {number} item_length
+         * @param {number} item_width
+         * @param {number} item_height
+         * @param {number} max_pallet_height
+         * @returns {object} Calculation results including placement coordinates.
+         */
+        function calculatePalletInfo(pallet_length, pallet_width, pallet_height,
+                                     item_length, item_width, item_height, max_pallet_height) {
+            let best_items_per_layer = 0;
+            let optimal_layer_pattern_desc = "None";
+            let placement_coords = [];
+
+            // List to store potential best patterns (items_per_layer, description, coords)
+            const candidate_patterns = [];
+
+            // --- Strategy 1: Mono-orientation (all items in the layer are the same orientation) ---
+
+            // Orientation 1: item_length along pallet_length, item_width along pallet_width
+            const num_l1 = Math.floor(pallet_length / item_length);
+            const num_w1 = Math.floor(pallet_width / item_width);
+            const items_layer_o1 = num_l1 * num_w1;
+            if (items_layer_o1 > 0) {
+                const current_mono_coords_o1 = [];
+                for (let row = 0; row < num_w1; row++) {
+                    for (let col = 0; col < num_l1; col++) {
+                        const x = col * item_length;
+                        const y = row * item_width;
+                        current_mono_coords_o1.push({ x, y, l: item_length, w: item_width, orientation: "L x W" });
+                    }
+                }
+                candidate_patterns.push({ items: items_layer_o1, desc: `${num_l1}x${num_w1} (L x W - Block/Row)`, coords: current_mono_coords_o1 });
+            }
+
+            // Orientation 2: item_width along pallet_length, item_length along pallet_width
+            const num_l2 = Math.floor(pallet_length / item_width);
+            const num_w2 = Math.floor(pallet_width / item_length);
+            const items_layer_o2 = num_l2 * num_w2;
+            if (items_layer_o2 > 0) {
+                const current_mono_coords_o2 = [];
+                for (let row = 0; row < num_w2; row++) {
+                    for (let col = 0; col < num_l2; col++) {
+                        const x = col * item_width;
+                        const y = row * item_length;
+                        current_mono_coords_o2.push({ x, y, l: item_width, w: item_length, orientation: "W x L" });
+                    }
+                }
+                candidate_patterns.push({ items: items_layer_o2, desc: `${num_l2}x${num_w2} (W x L - Block/Row)`, coords: current_mono_coords_o2 });
+            }
+
+            // --- Strategy 2: Mixed-orientation within a single layer (simplified heuristic) ---
+
+            // Heuristic 1: Fill with L x W first, then try to fill remaining width with W x L
+            if (item_length <= pallet_length && item_width <= pallet_width) {
+                let current_items_mixed1 = 0;
+                const current_placement_mixed1 = [];
+
+                const num_cols_main = Math.floor(pallet_length / item_length);
+                const num_rows_main = Math.floor(pallet_width / item_width);
+
+                // Part A: Pack with L x W
+                for (let row = 0; row < num_rows_main; row++) {
+                    for (let col = 0; col < num_cols_main; col++) {
+                        const x = col * item_length;
+                        const y = row * item_width;
+                        current_placement_mixed1.push({ x, y, l: item_length, w: item_width, orientation: "L x W" });
+                    }
+                }
+                current_items_mixed1 += (num_cols_main * num_rows_main);
+
+                // Part B: Try to fit rotated items in the remaining width strip
+                const remaining_pw_for_strip = pallet_width - (num_rows_main * item_width);
+                if (remaining_pw_for_strip >= item_length) { // Can fit item_length of a rotated item
+                    const num_rotated_along_length = Math.floor(pallet_length / item_width);
+                    const num_rotated_along_width = Math.floor(remaining_pw_for_strip / item_length);
+
+                    for (let row_rot = 0; row_rot < num_rotated_along_width; row_rot++) {
+                        for (let col_rot = 0; col_rot < num_rotated_along_length; col_rot++) {
+                            const x = col_rot * item_width;
+                            const y = (num_rows_main * item_width) + (row_rot * item_length); // Offset by already used width
+                            current_placement_mixed1.push({ x, y, l: item_width, w: item_length, orientation: "W x L" });
+                        }
+                    }
+                    current_items_mixed1 += (num_rotated_along_length * num_rotated_along_width);
+                }
+
+                if (current_items_mixed1 > 0) {
+                    candidate_patterns.push({ items: current_items_mixed1, desc: "Mixed (L x W primary, then W x L in strip)", coords: current_placement_mixed1 });
+                }
+            }
+
+            // Heuristic 2: Fill with W x L first, then try to fill remaining width with L x W
+            if (item_width <= pallet_length && item_length <= pallet_width) {
+                let current_items_mixed2 = 0;
+                const current_placement_mixed2 = [];
+
+                const num_cols_main_wl = Math.floor(pallet_length / item_width);
+                const num_rows_main_wl = Math.floor(pallet_width / item_length);
+
+                // Part A: Pack with W x L
+                for (let row = 0; row < num_rows_main_wl; row++) {
+                    for (let col = 0; col < num_cols_main_wl; col++) {
+                        const x = col * item_width;
+                        const y = row * item_length;
+                        current_placement_mixed2.push({ x, y, l: item_width, w: item_length, orientation: "W x L" });
+                    }
+                }
+                current_items_mixed2 += (num_cols_main_wl * num_rows_main_wl);
+
+                // Part B: Try to fit normal items in the remaining width strip
+                const remaining_pw_for_strip_wl = pallet_width - (num_rows_main_wl * item_length);
+                if (remaining_pw_for_strip_wl >= item_width) {
+                    const num_normal_along_length = Math.floor(pallet_length / item_length);
+                    const num_normal_along_width = Math.floor(remaining_pw_for_strip_wl / item_width);
+
+                    for (let row_norm = 0; row_norm < num_normal_along_width; row_norm++) {
+                        for (let col_norm = 0; col_norm < num_normal_along_length; col_norm++) {
+                            const x = col_norm * item_length;
+                            const y = (num_rows_main_wl * item_length) + (row_norm * item_width);
+                            current_placement_mixed2.push({ x, y, l: item_length, w: item_width, orientation: "L x W" });
+                        }
+                    }
+                    current_items_mixed2 += (num_normal_along_length * num_normal_along_width);
+                }
+
+                if (current_items_mixed2 > 0) {
+                    candidate_patterns.push({ items: current_items_mixed2, desc: "Mixed (W x L primary, then L x W in strip)", coords: current_placement_mixed2 });
+                }
+            }
+
+            // --- NEW STRATEGY 3: Brick Pattern ---
+            // Brick Pattern A: Alternating L x W and W x L rows
+            let current_items_brick_a = 0;
+            const current_placement_brick_a = [];
+            let current_y_a = 0;
+            while (true) {
+                let row_added = false;
+                // Try to place L x W row
+                if (current_y_a + item_width <= pallet_width) {
+                    const num_along_length = Math.floor(pallet_length / item_length);
+                    if (num_along_length > 0) {
+                        for (let i = 0; i < num_along_length; i++) {
+                            const x = i * item_length;
+                            current_placement_brick_a.push({ x, y: current_y_a, l: item_length, w: item_width, orientation: "L x W" });
+                        }
+                        current_items_brick_a += num_along_length;
+                        current_y_a += item_width;
+                        row_added = true;
+                    }
+                }
+                // Try to place W x L row (rotated)
+                if (current_y_a + item_length <= pallet_width) {
+                    const num_along_length_rot = Math.floor(pallet_length / item_width);
+                    if (num_along_length_rot > 0) {
+                        for (let i = 0; i < num_along_length_rot; i++) {
+                            const x = i * item_width;
+                            current_placement_brick_a.push({ x, y: current_y_a, l: item_width, w: item_length, orientation: "W x L" });
+                        }
+                        current_items_brick_a += num_along_length_rot;
+                        current_y_a += item_length;
+                        row_added = true;
+                    }
+                }
+                if (!row_added) break; // No more rows can be added
+            }
+            if (current_items_brick_a > 0) {
+                candidate_patterns.push({ items: current_items_brick_a, desc: "Brick Pattern (Alternating L x W and W x L rows)", coords: current_placement_brick_a });
+            }
+
+            // Brick Pattern B: Alternating L x W and W x L columns
+            let current_items_brick_b = 0;
+            const current_placement_brick_b = [];
+            let current_x_b = 0;
+            while (true) {
+                let col_added = false;
+                // Try to place L x W column
+                if (current_x_b + item_length <= pallet_length) {
+                    const num_along_width = Math.floor(pallet_width / item_width);
+                    if (num_along_width > 0) {
+                        for (let i = 0; i < num_along_width; i++) {
+                            const y = i * item_width;
+                            current_placement_brick_b.push({ x: current_x_b, y, l: item_length, w: item_width, orientation: "L x W" });
+                        }
+                        current_items_brick_b += num_along_width;
+                        current_x_b += item_length;
+                        col_added = true;
+                    }
+                }
+                // Try to place W x L column (rotated)
+                if (current_x_b + item_width <= pallet_length) {
+                    const num_along_width_rot = Math.floor(pallet_width / item_length);
+                    if (num_along_width_rot > 0) {
+                        for (let i = 0; i < num_along_width_rot; i++) {
+                            const y = i * item_length;
+                            current_placement_brick_b.push({ x: current_x_b, y, l: item_width, w: item_length, orientation: "W x L" });
+                        }
+                        current_items_brick_b += num_along_width_rot;
+                        current_x_b += item_width;
+                        col_added = true;
+                    }
+                }
+                if (!col_added) break; // No more columns can be added
+            }
+            if (current_items_brick_b > 0) {
+                candidate_patterns.push({ items: current_items_brick_b, desc: "Brick Pattern (Alternating L x W and W x L columns)", coords: current_placement_brick_b });
+            }
+
+
+            // --- NEW STRATEGY 4: Simplified Pinwheel / 2x2 Rotated Block ---
+            // Pinwheel 1: L x W, W x L, W x L, L x W
+            const unit_length1 = item_length + item_width;
+            const unit_width1 = item_width + item_length;
+
+            let current_items_pinwheel1 = 0;
+            const current_placement_pinwheel1 = [];
+
+            if (unit_length1 <= pallet_length && unit_width1 <= pallet_width) {
+                const num_units_l1 = Math.floor(pallet_length / unit_length1);
+                const num_units_w1 = Math.floor(pallet_width / unit_width1);
+
+                for (let row_unit = 0; row_unit < num_units_w1; row_unit++) {
+                    for (let col_unit = 0; col_unit < num_units_l1; col_unit++) {
+                        const base_x = col_unit * unit_length1;
+                        const base_y = row_unit * unit_width1;
+
+                        // Item 1 (Top-Left) L x W
+                        current_placement_pinwheel1.push({ x: base_x, y: base_y, l: item_length, w: item_width, orientation: "L x W" });
+                        // Item 2 (Top-Right) W x L
+                        current_placement_pinwheel1.push({ x: base_x + item_length, y: base_y, l: item_width, w: item_length, orientation: "W x L" });
+                        // Item 3 (Bottom-Left) W x L
+                        current_placement_pinwheel1.push({ x: base_x, y: base_y + item_width, l: item_width, w: item_length, orientation: "W x L" });
+                        // Item 4 (Bottom-Right) L x W
+                        current_placement_pinwheel1.push({ x: base_x + item_width, y: base_y + item_length, l: item_length, w: item_width, orientation: "L x W" });
+
+                        current_items_pinwheel1 += 4;
+                    }
+                }
+            }
+            if (current_items_pinwheel1 > 0) {
+                candidate_patterns.push({ items: current_items_pinwheel1, desc: "Simplified Pinwheel (2x2 Rotated Block)", coords: current_placement_pinwheel1 });
+            }
+
+            // Pinwheel 2: W x L, L x W, L x W, W x L (rotated version of pinwheel 1)
+            const unit_length2 = item_width + item_length;
+            const unit_width2 = item_length + item_width;
+
+            let current_items_pinwheel2 = 0;
+            const current_placement_pinwheel2 = [];
+
+            if (unit_length2 <= pallet_length && unit_width2 <= pallet_width) {
+                const num_units_l2 = Math.floor(pallet_length / unit_length2);
+                const num_units_w2 = Math.floor(pallet_width / unit_width2);
+
+                for (let row_unit = 0; row_unit < num_units_w2; row_unit++) {
+                    for (let col_unit = 0; col_unit < num_units_l2; col_unit++) {
+                        const base_x = col_unit * unit_length2;
+                        const base_y = row_unit * unit_width2;
+
+                        // Item 1 (Top-Left) W x L
+                        current_placement_pinwheel2.push({ x: base_x, y: base_y, l: item_width, w: item_length, orientation: "W x L" });
+                        // Item 2 (Top-Right) L x W
+                        current_placement_pinwheel2.push({ x: base_x + item_width, y: base_y, l: item_length, w: item_width, orientation: "L x W" });
+                        // Item 3 (Bottom-Left) L x W
+                        current_placement_pinwheel2.push({ x: base_x, y: base_y + item_length, l: item_length, w: item_width, orientation: "L x W" });
+                        // Item 4 (Bottom-Right) W x L
+                        current_placement_pinwheel2.push({ x: base_x + item_length, y: base_y + item_width, l: item_width, w: item_length, orientation: "W x L" });
+
+                        current_items_pinwheel2 += 4;
+                    }
+                }
+            }
+            if (current_items_pinwheel2 > 0) {
+                candidate_patterns.push({ items: current_items_pinwheel2, desc: "Simplified Pinwheel (Rotated 2x2 Block)", coords: current_placement_pinwheel2 });
+            }
+            // --- Pinwheel Pattern B (8-Item L+W Side) ---
+            let current_items_pinwheel_B = 0;
+            const current_placement_pinwheel_B_single_unit = [];
+
+            // The overall dimensions of one 8-item pinwheel unit.
+            // Based on image_39922a.png, the pattern seems to be (item_length + 2*item_width) by (item_length + 2*item_width).
+            // Let's analyze the image for dimensions:
+            // The top row has item 1 (W x L) and item 2 (W x L) and item 3 (L x W).
+            // So, length of top row: item_width + item_width + item_length = 2*item_width + item_length.
+            // The left column has item 1 (W x L), item 8 (L x W), item 7 (L x W) below it.
+            // So, width of left column: item_length + item_width + item_width = item_length + 2*item_width.
+            // This is a square pattern with side (item_length + 2*item_width).
+            const pinwheel_B_unit_side = item_length + (2 * item_width);
+
+            if (pinwheel_B_unit_side > 0 && pinwheel_B_unit_side <= pallet_length && pinwheel_B_unit_side <= pallet_width) {
+                const num_units_l_B = Math.floor(pallet_length / pinwheel_B_unit_side);
+                const num_units_w_B = Math.floor(pallet_width / pinwheel_B_unit_side);
+
+                // Generate coords for a single unit (classic 8-item pinwheel as per image_39922a.png)
+                // Item 1 (Vertical, W x L): Top-left
+                current_placement_pinwheel_B_single_unit.push({ x: 0, y: 0, l: item_width, w: item_length, orientation: "W x L" });
+                // Item 2 (Vertical, W x L): Middle-left (right of Item 1)
+                current_placement_pinwheel_B_single_unit.push({ x: item_width, y: 0, l: item_width, w: item_length, orientation: "W x L" });
+                // Item 3 (Horizontal, L x W): Top-right (right of Item 2)
+                current_placement_pinwheel_B_single_unit.push({ x: (item_width * 2), y: 0, l: item_length, w: item_width, orientation: "L x W" });
+                // Item 4 (Horizontal, L x W): Middle-right (below Item 3)
+                current_placement_pinwheel_B_single_unit.push({ x: (item_width * 2), y: item_width, l: item_length, w: item_width, orientation: "L x W" });
+                // Item 5 (Vertical, W x L): Bottom-right (right of Item 6)
+                current_placement_pinwheel_B_single_unit.push({ x: item_length + item_width, y: item_width * 2, l: item_width, w: item_length, orientation: "W x L" });
+                // Item 6 (Vertical, W x L): Center-bottom (left of Item 5)
+                current_placement_pinwheel_B_single_unit.push({ x: item_length, y: item_width * 2, l: item_width, w: item_length, orientation: "W x L" });
+                // Item 7 (Horizontal, L x W): Bottom-left (below Item 8)
+                current_placement_pinwheel_B_single_unit.push({ x: 0, y: item_length, l: item_length, w: item_width, orientation: "L x W" });
+                // Item 8 (Horizontal, L x W): Middle-left (below Item 1)
+                current_placement_pinwheel_B_single_unit.push({ x: 0, y: item_length + item_width, l: item_length, w: item_width, orientation: "L x W" });
+
+                current_items_pinwheel_B = num_units_l_B * num_units_w_B * 8;
+            }
+
+            if (current_items_pinwheel_B > 0) {
+                candidate_patterns.push({ items: current_items_pinwheel_B, desc: "8-Item Pinwheel", coords: current_placement_pinwheel_B_single_unit });
+            }
+
+            // --- FINAL SELECTION ---
+            const pattern_preference = {
+                "8-Item Pinwheel": 6, // Highest preference for this specific pinwheel
+                "Simplified Pinwheel (2x2 Rotated Block)": 5,
+                "Simplified Pinwheel (Rotated 2x2 Block)": 5,
+                "Brick Pattern (Alternating L x W and W x L rows)": 4,
+                "Brick Pattern (Alternating L x W and W x L columns)": 4,
+                "Mixed (L x W primary, then W x L in strip)": 3,
+                "Mixed (W x L primary, then L x W in strip)": 3,
+                "L x W - Block/Row": 2,
+                "W x L - Block/Row": 2,
+                "None": 0
+            };
+
+            // Sort by number of items (desc), then by preference (desc)
+            candidate_patterns.sort((a, b) => {
+                if (b.items !== a.items) {
+                    return b.items - a.items;
+                }
+                return (pattern_preference[b.desc] || 0) - (pattern_preference[a.desc] || 0);
+            });
+
+            if (candidate_patterns.length > 0) {
+                best_items_per_layer = candidate_patterns[0].items;
+                optimal_layer_pattern_desc = candidate_patterns[0].desc;
+                placement_coords = candidate_patterns[0].coords;
+            }
+
+            const available_stacking_height = max_pallet_height - pallet_height;
+            let layers = 0;
+            if (item_height > 0 && available_stacking_height >= item_height) {
+                layers = Math.floor(available_stacking_height / item_height);
+            }
+
+            const total_items = best_items_per_layer * layers;
+            const loaded_pallet_height = pallet_height + (layers * item_height);
+
+            const pallet_length_m = pallet_length / 100;
+            const pallet_width_m = pallet_width / 100;
+            const loaded_pallet_height_m = loaded_pallet_height / 100;
+
+            const pallet_cbm = pallet_length_m * pallet_width_m * loaded_pallet_height_m;
+
+            const pallet_dimensions_cm = `${pallet_length}cm x ${pallet_width}cm x ${loaded_pallet_height.toFixed(2)}cm`;
+
+            return {
+                total_items,
+                pallet_dimensions_cm,
+                pallet_cbm,
+                optimal_layer_pattern: optimal_layer_pattern_desc,
+                placement_coords
+            };
+        }
+
+        /**
+         * Draws the pallet layer layout on the canvas.
+         * @param {number} pallet_length
+         * @param {number} pallet_width
+         * @param {Array<object>} placement_coords - [{x, y, l, w, orientation}]
+         */
+        function drawPalletLayout(pallet_length, pallet_width, placement_coords) {
+            const padding = 20; // Padding around the pallet drawing
+            const canvasContainerWidth = palletCanvas.parentElement.clientWidth; // Get width from parent div
+            const canvasContainerHeight = 600; // Max height for canvas, adjust as needed
+
+            // Set canvas display size for CSS
+            palletCanvas.style.width = '100%';
+            palletCanvas.style.height = `${canvasContainerHeight}px`;
+
+            // Set canvas internal drawing resolution
+            const dpr = window.devicePixelRatio || 1;
+            palletCanvas.width = canvasContainerWidth * dpr;
+            palletCanvas.height = canvasContainerHeight * dpr;
+            ctx.scale(dpr, dpr);
+
+            // Calculate scale factor dynamically to fit the pallet within the canvas's current display size
+            const availableDrawingWidth = canvasContainerWidth - 2 * padding;
+            const availableDrawingHeight = canvasContainerHeight - 2 * padding;
+
+            const scaleX = availableDrawingWidth / pallet_length;
+            const scaleY = availableDrawingHeight / pallet_width;
+            const scaleFactor = Math.min(scaleX, scaleY);
+
+            ctx.clearRect(0, 0, palletCanvas.width / dpr, palletCanvas.height / dpr); // Clear previous drawing
+
+            // Center the drawing
+            const scaledPalletLength = pallet_length * scaleFactor;
+            const scaledPalletWidth = pallet_width * scaleFactor;
+            const offsetX = (canvasContainerWidth - scaledPalletLength) / 2;
+            const offsetY = (canvasContainerHeight - scaledPalletWidth) / 2;
+
+
+            // Draw pallet outline
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(offsetX, offsetY, scaledPalletLength, scaledPalletWidth);
+
+            // Item colors (with alpha for transparency)
+            const itemColors = [
+                'rgba(255, 102, 102, 0.7)', // Red
+                'rgba(102, 255, 102, 0.7)', // Green
+                'rgba(102, 102, 255, 0.7)', // Blue
+                'rgba(255, 255, 102, 0.7)', // Yellow
+                'rgba(255, 102, 255, 0.7)', // Magenta
+                'rgba(102, 255, 255, 0.7)', // Cyan
+                'rgba(255, 153, 51, 0.7)',  // Orange
+                'rgba(153, 51, 255, 0.7)',  // Purple
+                'rgba(51, 255, 153, 0.7)',  // Light Green
+                'rgba(51, 153, 255, 0.7)'   // Light Blue
+            ];
+
+            // Determine font size based on the smaller dimension of the scaled item or a minimum
+            const baseFontSize = Math.max(10, 0.02 * scaleFactor * Math.min(pallet_length, pallet_width));
+            ctx.font = `${baseFontSize}px Inter`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#1e293b';
+
+            if (placement_coords.length === 0) {
+                ctx.fillText("No items fit on this layer or calculation failed.", canvasContainerWidth / 2, canvasContainerHeight / 2);
+            } else {
+                placement_coords.forEach((item, i) => {
+                    const x_px = offsetX + item.x * scaleFactor;
+                    const y_px = offsetY + item.y * scaleFactor;
+                    const width_px = item.l * scaleFactor;
+                    const height_px = item.w * scaleFactor;
+
+                    ctx.fillStyle = itemColors[i % itemColors.length];
+                    ctx.fillRect(x_px, y_px, width_px, height_px);
+                    ctx.strokeStyle = '#334155';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(x_px, y_px, width_px, height_px);
+
+                    // Add text for item orientation, only if space allows
+                    if (width_px > baseFontSize * 3 && height_px > baseFontSize * 1.5) { // Heuristic to prevent overlapping text
+                        const text = item.orientation;
+                        ctx.fillStyle = '#1e293b'; // Dark text for readability
+                        ctx.fillText(text, x_px + width_px / 2, y_px + height_px / 2);
+                    }
+                });
+            }
+        }
+
+        // Event listener for the calculate button
+        calculateBtn.addEventListener('click', () => {
+            hideErrorMessage(); // Clear previous errors
+
+            const palletLength = parseFloat(palletLengthInput.value);
+            const palletWidth = parseFloat(palletWidthInput.value);
+            const palletHeight = parseFloat(palletHeightInput.value);
+            const itemLength = parseFloat(itemLengthInput.value);
+            const itemWidth = parseFloat(itemWidthInput.value);
+            const itemHeight = parseFloat(itemHeightInput.value);
+            const maxPalletHeight = parseFloat(maxPalletHeightInput.value);
+
+            // Basic validation
+            if (isNaN(palletLength) || isNaN(palletWidth) || isNaN(palletHeight) ||
+                isNaN(itemLength) || isNaN(itemWidth) || isNaN(itemHeight) || isNaN(maxPalletHeight) ||
+                palletLength <= 0 || palletWidth <= 0 || itemLength <= 0 || itemWidth <= 0 || itemHeight <= 0 || maxPalletHeight <= 0) {
+                showErrorMessage("Please enter valid positive numbers for all dimensions.");
+                totalItemsSpan.textContent = '0';
+                optimalPatternSpan.textContent = 'N/A';
+                palletDimensionsSpan.textContent = 'N/A';
+                palletCBMSpan.textContent = 'N/A';
+                drawPalletLayout(100, 100, []); // Clear canvas by drawing empty pallet
+                return;
+            }
+
+            if ((palletLength < itemLength && palletLength < itemWidth) || (palletWidth < itemWidth && palletWidth < itemLength)) {
+                showErrorMessage("Item(s) cannot fit on the pallet, check dimensions.");
+                totalItemsSpan.textContent = '0';
+                optimalPatternSpan.textContent = 'N/A';
+                palletDimensionsSpan.textContent = 'N/A';
+                palletCBMSpan.textContent = 'N/A';
+                drawPalletLayout(palletLength, palletWidth, []); // Show pallet but no items
+                return;
+            }
+
+            if (maxPalletHeight < palletHeight + itemHeight && itemHeight > 0) {
+                 showErrorMessage("Max pallet height is too low for even one layer of items on the base pallet.");
+                 totalItemsSpan.textContent = '0';
+                 optimalPatternSpan.textContent = 'N/A';
+                 palletDimensionsSpan.textContent = 'N/A';
+                 palletCBMSpan.textContent = 'N/A';
+                 drawPalletLayout(palletLength, palletWidth, []); // Show pallet but no items
+                 return;
+            }
+
+
+            // Call the calculation function
+            const result = calculatePalletInfo(palletLength, palletWidth, palletHeight,
+                                                itemLength, itemWidth, itemHeight, maxPalletHeight);
+
+            // Update results display
+            totalItemsSpan.textContent = result.total_items;
+            optimalPatternSpan.textContent = result.optimal_layer_pattern;
+            palletDimensionsSpan.textContent = result.pallet_dimensions_cm;
+            palletCBMSpan.textContent = result.pallet_cbm.toFixed(3) + ' m³';
+
+            // Draw the pallet layout
+            drawPalletLayout(palletLength, palletWidth, result.placement_coords);
+        });
+
+        // Initial draw on load
+        window.addEventListener('load', () => {
+            // Set initial canvas size based on its container
+            palletCanvas.style.width = '100%';
+            palletCanvas.style.height = '600px'; // Set a default height
+            calculateBtn.click(); // Trigger initial calculation and draw with default values
+        });
+
+        // Redraw on window resize to ensure responsiveness
+        window.addEventListener('resize', () => {
+            calculateBtn.click(); // Recalculate and redraw to adapt to new canvas size
+        });
+    </script>
+</body>
+</html>
